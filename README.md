@@ -1,233 +1,143 @@
--- Script de Dungeon para Roblox
--- Baseado no script open source by tsuo
--- Foco em sistema de HIT para NPCs/Mobs
+--[[
+Dungeon Heroes GUI Script - Auto Kill (Testando várias funções)
+Este script tenta atacar mobs automaticamente usando diferentes métodos,
+para aumentar as chances de funcionar mesmo sem saber exatamente o RemoteEvent do jogo.
+]]
 
--- Configurações Globais
-_G.AutoFarm = false
-_G.FastAttack = false
-_G.FastAttackDelay = 0.1
-_G.SelectWeapon = ""
-_G.AutoHaki = true
-_G.TeleportSpeed = 300
+-- Serviços básicos
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
 
--- Detecção do Jogo (PlaceIds comuns de dungeons)
-local DungeonGames = {
-    [2753915549] = "Blox Fruits World 1",
-    [4442272183] = "Blox Fruits World 2", 
-    [7449423635] = "Blox Fruits World 3",
-    [537413528] = "Build A Boat",
-    [286090429] = "Arsenal",
-    [1537690962] = "Bee Swarm Simulator"
-}
+-- GUI simples
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "DH_GUI"
 
-local CurrentGame = DungeonGames[game.PlaceId]
-if not CurrentGame then
-    game:GetService("Players").LocalPlayer:Kick("Jogo não suportado para dungeon farming!")
-    return
+local function createButton(text, posY)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 180, 0, 36)
+    btn.Position = UDim2.new(0, 10, 0, posY)
+    btn.BackgroundColor3 = Color3.fromRGB(44,44,60)
+    btn.Text = text
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextSize = 20
+    btn.Parent = ScreenGui
+    return btn
 end
 
-print("Dungeon Script carregado para: " .. CurrentGame)
+local autoKillBtn = createButton("Auto Kill: OFF", 10)
+local floatBtn    = createButton("Flutuar: OFF", 54)
 
--- Função para ativar Haki automaticamente
-function AutoHaki()
-    if not game:GetService("Players").LocalPlayer.Character:FindFirstChild("HasBuso") then
-        game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Buso")
+local floatY = 50
+local floatEnabled = false
+local autoKill = false
+local autoKillConnection, floatConnection
+
+-- TEST AUTO ATTACK FUNCTIONS
+local function tryAttackMethods(mob)
+    -- 1: Tentar tocar fisicamente o mob (alguns jogos aceitam)
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") and mob:FindFirstChild("HumanoidRootPart") then
+        char.HumanoidRootPart.CFrame = mob.HumanoidRootPart.CFrame + Vector3.new(0,2,0)
     end
-end
 
--- Função para equipar arma
-function EquipWeapon(ToolSe)
-    if not _G.NotAutoEquip then
-        if game.Players.LocalPlayer.Backpack:FindFirstChild(ToolSe) then
-            Tool = game.Players.LocalPlayer.Backpack:FindFirstChild(ToolSe)
-            wait(.1)
-            game.Players.LocalPlayer.Character.Humanoid:EquipTool(Tool)
+    -- 2: Tentar RemoteEvents comuns em ReplicatedStorage
+    for _,v in pairs(ReplicatedStorage:GetDescendants()) do
+        if v:IsA("RemoteEvent") and v.Name:lower():find("attack") then
+            pcall(function()
+                v:FireServer(mob)
+            end)
+        elseif v:IsA("RemoteFunction") and v.Name:lower():find("attack") then
+            pcall(function()
+                v:InvokeServer(mob)
+            end)
         end
     end
-end
 
--- Função de teleporte otimizada
-function topos(Pos)
-    local Distance = (Pos.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-    local Speed
-    
-    if Distance < 25 then
-        Speed = 5000
-    elseif Distance < 50 then
-        Speed = 2000
-    elseif Distance < 150 then
-        Speed = 800
-    elseif Distance < 250 then
-        Speed = 600
-    elseif Distance < 500 then
-        Speed = 300
-    elseif Distance < 750 then
-        Speed = 250
-    elseif Distance >= 1000 then
-        Speed = 200
+    -- 3: Tentar eventos genéricos ("Damage", "Hit", "Skill", etc)
+    for _,v in pairs(ReplicatedStorage:GetDescendants()) do
+        if v:IsA("RemoteEvent") and (v.Name:lower():find("damage") or v.Name:lower():find("hit") or v.Name:lower():find("skill")) then
+            pcall(function()
+                v:FireServer(mob)
+            end)
+        end
     end
-    
-    game:GetService("TweenService"):Create(
-        game:GetService("Players").LocalPlayer.Character.HumanoidRootPart,
-        TweenInfo.new(Distance/Speed, Enum.EasingStyle.Linear),
-        {CFrame = Pos}
-    ):Play()
-end
 
--- Função para obter a arma equipada
-function GetBladeHit()
-    local CombatFrameworkLib = debug.getupvalues(require(game:GetService("Players").LocalPlayer.PlayerScripts.CombatFramework))
-    local CmrFwLib = CombatFrameworkLib[2]
-    local p13 = CmrFwLib.activeController
-    local weapon = p13.blades[1]
-    if not weapon then 
-        return weapon
-    end
-    while weapon.Parent ~= game.Players.LocalPlayer.Character do
-        weapon = weapon.Parent 
-    end
-    return weapon
-end
-
--- Função principal de ataque/hit
-function AttackHit()
-    local CombatFrameworkLib = debug.getupvalues(require(game:GetService("Players").LocalPlayer.PlayerScripts.CombatFramework))
-    local CmrFwLib = CombatFrameworkLib[2]
-    local plr = game.Players.LocalPlayer
-    
-    for i = 1, 1 do
-        local bladehit = require(game.ReplicatedStorage.CombatFramework.RigLib).getBladeHits(plr.Character,{plr.Character.HumanoidRootPart},60)
-        local cac = {}
-        local hash = {}
-        
-        for k, v in pairs(bladehit) do
-            if v.Parent:FindFirstChild("HumanoidRootPart") and not hash[v.Parent] then
-                table.insert(cac, v.Parent.HumanoidRootPart)
-                hash[v.Parent] = true
+    -- 4: Procurar por eventos em StarterGui ou outras pastas comuns
+    for _,service in pairs({game:GetService("StarterGui"), game:GetService("StarterPack")}) do
+        for _,v in pairs(service:GetDescendants()) do
+            if v:IsA("RemoteEvent") and v.Name:lower():find("attack") then
+                pcall(function()
+                    v:FireServer(mob)
+                end)
             end
         end
-        
-        bladehit = cac
-        if #bladehit > 0 then
-            pcall(function()
-                CmrFwLib.activeController.timeToNextAttack = 1
-                CmrFwLib.activeController.attacking = false
-                CmrFwLib.activeController.blocking = false
-                CmrFwLib.activeController.timeToNextBlock = 0
-                CmrFwLib.activeController.increment = 3
-                CmrFwLib.activeController.hitboxMagnitude = 120
-                CmrFwLib.activeController.focusStart = 0
-                game:GetService("ReplicatedStorage").RigControllerEvent:FireServer("weaponChange",tostring(GetBladeHit()))
-                game:GetService("ReplicatedStorage").RigControllerEvent:FireServer("hit", bladehit, i, "")
-            end)
-        end
+    end
+
+    -- 5: Ativar ferramentas equipadas (para jogos que usam Tool:Activate)
+    local tool = char and char:FindFirstChildOfClass("Tool")
+    if tool then
+        pcall(function()
+            tool:Activate()
+        end)
     end
 end
 
--- Loop de ataque rápido
-spawn(function()
-    while wait(.1) do
-        if _G.FastAttack then
-            pcall(function()
-                repeat task.wait(_G.FastAttackDelay)
-                    AttackHit()
-                until not _G.FastAttack
-            end)
-        end
-    end
-end)
-
--- Função para encontrar NPCs/Mobs próximos
-function FindNearestEnemy()
-    local nearestEnemy = nil
-    local shortestDistance = math.huge
-    
-    for i,v in pairs(game:GetService("Workspace").Enemies:GetChildren()) do
-        if v.Name and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
-            if v.Humanoid.Health > 0 then
-                local distance = (v.HumanoidRootPart.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-                if distance < shortestDistance then
-                    shortestDistance = distance
-                    nearestEnemy = v
+-- Função de Auto Kill
+local function autoAttack()
+    while autoKill do
+        -- Buscar mobs (ajuste o filtro se necessário)
+        for _, mob in pairs(workspace:GetChildren()) do
+            if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") and mob ~= LocalPlayer.Character then
+                if mob.Humanoid.Health > 0 then
+                    tryAttackMethods(mob)
+                    wait(0.1)
                 end
             end
         end
-    end
-    
-    return nearestEnemy
-end
-
--- Sistema de Farm Automático para Dungeons
-function AutoFarmDungeon()
-    local enemy = FindNearestEnemy()
-    
-    if enemy then
-        repeat wait()
-            -- Ativar Haki se necessário
-            if _G.AutoHaki then
-                AutoHaki()
-            end
-            
-            -- Equipar arma se especificada
-            if _G.SelectWeapon ~= "" then
-                EquipWeapon(_G.SelectWeapon)
-            end
-            
-            -- Teleportar para o inimigo
-            topos(enemy.HumanoidRootPart.CFrame * CFrame.new(0, 20, 0))
-            
-            -- Configurar inimigo para facilitar o hit
-            enemy.HumanoidRootPart.CanCollide = false
-            enemy.HumanoidRootPart.Size = Vector3.new(60, 60, 60)
-            enemy.Humanoid.WalkSpeed = 0
-            
-            -- Ativar ataque rápido
-            _G.FastAttack = true
-            
-            -- Simular clique para atacar
-            game:GetService("VirtualUser"):CaptureController()
-            game:GetService("VirtualUser"):Button1Down(Vector2.new(1280, 672), game.Workspace.CurrentCamera.CFrame)
-            
-        until not _G.AutoFarm or not enemy.Parent or enemy.Humanoid.Health <= 0
-        
-        _G.FastAttack = false
+        wait(0.3)
     end
 end
 
--- Loop principal de farm
-spawn(function()
-    while wait(1) do
-        if _G.AutoFarm then
-            pcall(function()
-                AutoFarmDungeon()
-            end)
-        end
+-- Botão do Auto Kill
+autoKillBtn.MouseButton1Click:Connect(function()
+    autoKill = not autoKill
+    autoKillBtn.Text = "Auto Kill: " .. (autoKill and "ON" or "OFF")
+    if autoKill then
+        spawn(autoAttack)
     end
 end)
 
--- Remover efeitos visuais para melhor performance
-spawn(function()
-    while wait() do
-        for i,v in pairs(game:GetService("Workspace")["_WorldOrigin"]:GetChildren()) do
-            pcall(function()
-                if v.Name == ("CurvedRing") or v.Name == ("SlashHit") or v.Name == ("SwordSlash") or v.Name == ("SlashTail") or v.Name == ("Sounds") then
-                    v:Destroy()
+-- Botão de Flutuar
+floatBtn.MouseButton1Click:Connect(function()
+    floatEnabled = not floatEnabled
+    floatBtn.Text = "Flutuar: " .. (floatEnabled and "ON" or "OFF")
+    if floatEnabled then
+        if not floatConnection then
+            floatConnection = RunService.RenderStepped:Connect(function()
+                local char = LocalPlayer.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    hrp.CFrame = CFrame.new(hrp.Position.X, floatY, hrp.Position.Z)
+                    hrp.Velocity = Vector3.new(0,0,0)
                 end
             end)
         end
+    else
+        if floatConnection then
+            floatConnection:Disconnect()
+            floatConnection = nil
+        end
     end
 end)
 
--- Interface simples para controle
-print("=== DUNGEON SCRIPT CARREGADO ===")
-print("Comandos disponíveis:")
-print("_G.AutoFarm = true/false -- Ativar/Desativar farm automático")
-print("_G.FastAttack = true/false -- Ativar/Desativar ataque rápido")
-print("_G.SelectWeapon = 'NomeArma' -- Definir arma para equipar")
-print("_G.AutoHaki = true/false -- Ativar/Desativar haki automático")
-print("================================")
+print("Dungeon Heroes Auto Kill Script carregado!\nSe algum ataque funcionar, avise qual RemoteEvent aparece no console F9.")
 
--- Exemplo de uso:
--- _G.AutoFarm = true
--- _G.SelectWeapon = "Katana"
--- _G.FastAttack = true
+--[[
+Dicas:
+- Se algum mob morrer/receber dano, veja se aparece erro ou informação no console F9 (pode aparecer o nome do remote).
+- Se o personagem for teleportado para cima do mob, mas não causar dano, geralmente é questão de descobrir o RemoteEvent correto.
+- Se precisar de mais métodos de ataque, envie prints do console F9 ao atacar manualmente.
+]]
