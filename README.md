@@ -1,79 +1,52 @@
---[[ Dungeon Heroes - Auto Kill Testador de Remotes de Ataque
-Ativa cada RemoteEvent candidato para cada mob encontrado.
-Veja no console se algum deles causa dano nos mobs!
-]]
+-- AUTO HIT para Dungeon Heroes (ataca como se estivesse clicando no mouse)
+-- Ajuste o intervalo se quiser hits mais rápidos/lentos
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- Lista dos possíveis remotes de ataque
-local remotePaths = {
-    "Systems.Combat.DealDamage",
-    "Systems.Combat.SetDamageType",
-    "Systems.Combat.PlayerAttack",
-    "Systems.Combat._PlayerSkillAttack",
-    "Systems.Combat.HitboxIndicator",
-    "Systems.Combat.AddToHitList",
-    "Systems.Mobs.PetAttackAnim",
-    "Systems.Mobs.RunAttackModule",
-    "Systems.Mobs.RunPetAttackModule"
-}
+-- Troque aqui se descobrir outro nome de remote
+local remote = ReplicatedStorage:FindFirstChild("Systems")
+    and ReplicatedStorage.Systems:FindFirstChild("Combat")
+    and ReplicatedStorage.Systems.Combat:FindFirstChild("PlayerAttack")
 
--- Pega o remote pelo caminho
-local function getRemote(path)
-    local node = ReplicatedStorage
-    for seg in string.gmatch(path, "[^%.]+") do
-        node = node:FindFirstChild(seg)
-        if not node then return nil end
-    end
-    return node
-end
-
--- Encontra mobs
-local function getMobs()
-    local mobs = {}
-    for _, obj in ipairs(workspace:GetChildren()) do
-        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") and obj ~= LocalPlayer.Character then
-            if obj.Humanoid.Health > 0 then
-                table.insert(mobs, obj)
-            end
-        end
-    end
-    return mobs
-end
+local autoHit = false
 
 -- GUI simples
 local gui = Instance.new("ScreenGui", game.CoreGui)
-gui.Name = "DH_AutoKillTest"
+gui.Name = "DH_AutoHitGUI"
 local btn = Instance.new("TextButton", gui)
 btn.Size = UDim2.new(0, 200, 0, 40)
-btn.Position = UDim2.new(0, 10, 0, 120)
-btn.Text = "TESTAR AUTO KILL"
+btn.Position = UDim2.new(0, 10, 0, 60)
+btn.Text = "AUTO HIT: OFF"
 btn.BackgroundColor3 = Color3.fromRGB(60,60,90)
 btn.TextColor3 = Color3.new(1,1,1)
 btn.Font = Enum.Font.SourceSansBold
 btn.TextSize = 22
 
 btn.MouseButton1Click:Connect(function()
-    print("==== INICIANDO TESTE DE REMOTES DE ATAQUE ====")
-    local mobs = getMobs()
-    for _, mob in ipairs(mobs) do
-        print("Testando em mob:", mob.Name)
-        for _, path in ipairs(remotePaths) do
-            local remote = getRemote(path)
-            if remote then
-                print("Chamando remote:", remote:GetFullName())
-                pcall(function()
-                    -- Tenta argumentos comuns: mob, mob.Humanoid, mob.HumanoidRootPart
-                    remote:FireServer(mob)
-                    remote:FireServer(mob.Humanoid)
-                    remote:FireServer(mob.HumanoidRootPart)
-                end)
-            else
-                print("Remote não encontrado:", path)
+    autoHit = not autoHit
+    btn.Text = "AUTO HIT: " .. (autoHit and "ON" or "OFF")
+    if autoHit then
+        spawn(function()
+            while autoHit do
+                if remote then
+                    -- O argumento pode ser nulo, Character, ou HumanoidRootPart dependendo do jogo
+                    -- Teste os três abaixo para ver qual funciona melhor:
+                    pcall(function() remote:FireServer() end)
+                    -- pcall(function() remote:FireServer(LocalPlayer.Character) end)
+                    -- pcall(function() remote:FireServer(LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")) end)
+                end
+                wait(0.15) -- ajuste para atacar mais rápido/lento
             end
-        end
+        end)
     end
-    print("==== TESTE FINALIZADO! Veja se algum mob tomou dano! ====")
 end)
+
+print("Auto Hit carregado. Aperte o botão na tela para ligar/desligar.")
+
+--[[
+Se não pegar, tente trocar o remote para "_PlayerSkillAttack" ou testar os argumentos comentados acima.
+Se ao ativar o botão o personagem atacar igual ao clique normal, está correto!
+Se não funcionar, me envie prints do console ao atacar manualmente, assim posso ajustar o script.
+]]
