@@ -14,6 +14,20 @@ local RunService = game:GetService("RunService")
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 ScreenGui.Name = "DH_GUI"
 
+
+local function printRemotes(folder)
+    for _, v in pairs(folder:GetDescendants()) do
+        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
+            print("Remote encontrado:", v:GetFullName())
+        end
+    end
+end
+
+local mobsFolder = ReplicatedStorage:FindFirstChild("Systems")
+if mobsFolder and mobsFolder:FindFirstChild("Mobs") then
+    printRemotes(mobsFolder.Mobs)
+end
+
 local function createButton(text, posY)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 180, 0, 36)
