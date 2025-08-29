@@ -149,11 +149,19 @@ end
 -- SISTEMA AUTO HIT - Simula cliques automáticos para 100% de acerto
 local function autoHit()
     local char = LocalPlayer.Character
-    if not char then return end
+    if not char then 
+        print("🚫 Auto Hit: Character não encontrado")
+        return 
+    end
     
     local humanoid = char:FindFirstChild("Humanoid")
     local rootPart = char:FindFirstChild("HumanoidRootPart")
-    if not humanoid or not rootPart then return end
+    if not humanoid or not rootPart then 
+        print("🚫 Auto Hit: Humanoid ou HumanoidRootPart não encontrado")
+        return 
+    end
+    
+    print("🔍 Auto Hit: Procurando mobs próximos...")
     
     -- Ativar flutuação automaticamente quando Auto Hit estiver ON
     if not floatEnabled then
@@ -161,16 +169,20 @@ local function autoHit()
         floatBtn.Text = "Flutuar: ON"
         floatBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
         
-        -- Iniciar flutuação
+        -- Iniciar flutuação com BodyPosition (posição fixa)
         if floatConnection then floatConnection:Disconnect() end
         floatConnection = RunService.Heartbeat:Connect(function()
             if char and char:FindFirstChild("HumanoidRootPart") then
-                local bodyVelocity = char.HumanoidRootPart:FindFirstChild("BodyVelocity")
-                if not bodyVelocity then
-                    bodyVelocity = Instance.new("BodyVelocity")
-                    bodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
-                    bodyVelocity.Velocity = Vector3.new(0, floatY, 0)
-                    bodyVelocity.Parent = char.HumanoidRootPart
+                local bodyPosition = char.HumanoidRootPart:FindFirstChild("BodyPosition")
+                if not bodyPosition then
+                    bodyPosition = Instance.new("BodyPosition")
+                    bodyPosition.MaxForce = Vector3.new(4000, 4000, 4000)
+                    bodyPosition.Position = char.HumanoidRootPart.Position + Vector3.new(0, 5, 0)
+                    bodyPosition.Parent = char.HumanoidRootPart
+                else
+                    -- Atualizar posição para manter flutuando 5 studs acima
+                    local currentPos = char.HumanoidRootPart.Position
+                    bodyPosition.Position = Vector3.new(currentPos.X, currentPos.Y + 5, currentPos.Z)
                 end
             end
         end)
@@ -184,8 +196,13 @@ local function autoHit()
     -- Encontrar o mob mais próximo (apenas monstros/NPCs, não players)
     local nearestMob = nil
     local shortestDistance = math.huge
+    local totalEntitiesChecked = 0
+    local validTargetsFound = 0
+    
+    print("🔍 Iniciando busca por mobs em workspace...")
     
     for _, obj in pairs(workspace:GetDescendants()) do
+        totalEntitiesChecked = totalEntitiesChecked + 1
         if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
             -- Verificar se não é o próprio player
             if obj ~= char and obj.Humanoid.Health > 0 then
@@ -240,15 +257,20 @@ local function autoHit()
                 
                 -- Só considerar como alvo se passou nos filtros
                 if isValidTarget then
+                    validTargetsFound = validTargetsFound + 1
                     local distance = (rootPart.Position - obj.HumanoidRootPart.Position).Magnitude
+                    print("✅ Alvo válido encontrado:", obj.Name, "Distância:", math.floor(distance), "studs")
                     if distance < shortestDistance and distance <= 50 then -- Alcance de 50 studs
                         shortestDistance = distance
                         nearestMob = obj
+                        print("🎯 Novo alvo mais próximo:", obj.Name, "Distância:", math.floor(distance))
                     end
                 end
             end
         end
     end
+    
+    print("📊 Busca concluída - Entidades verificadas:", totalEntitiesChecked, "Alvos válidos:", validTargetsFound)
     
     if nearestMob then
         print("🎯 Auto Hit ativo - Atacando MOB:", nearestMob.Name, "Distância:", math.floor(shortestDistance))
@@ -261,9 +283,18 @@ local function autoHit()
         local teleportPosition = targetPosition + (direction * safeDistance)
         
         pcall(function()
-            -- Teleportar flutuando até o mob (mais agressivo)
-            rootPart.CFrame = CFrame.new(teleportPosition + Vector3.new(0, 3, 0)) -- +3 para manter flutuando
-            print("🌀 Teleportado para mob:", nearestMob.Name, "Posição:", teleportPosition)
+            -- Teleportar flutuando até o mob (mais agressivo) com posição específica
+            local floatPosition = teleportPosition + Vector3.new(0, 8, 0) -- +8 para manter flutuando mais alto
+            rootPart.CFrame = CFrame.new(floatPosition)
+            
+            -- Atualizar BodyPosition se existir para manter a posição específica
+            local bodyPosition = rootPart:FindFirstChild("BodyPosition")
+            if bodyPosition then
+                bodyPosition.Position = floatPosition
+            end
+            
+            print("🌀 Teleportado para mob:", nearestMob.Name)
+            print("📍 Posição específica (X,Y,Z):", math.floor(floatPosition.X), math.floor(floatPosition.Y), math.floor(floatPosition.Z))
         end)
         
         -- Testar teleporte via RemoteEvent também
@@ -345,6 +376,7 @@ local function autoHit()
         
         return true -- Hit realizado
     else
+        print("❌ Nenhum mob encontrado para atacar")
         -- Debug: mostrar por que nenhum mob foi encontrado
         local playersNearby = 0
         local npcsNearby = 0
@@ -747,7 +779,7 @@ local function findMobs()
     end
     
     -- Buscar em pastas específicas comuns
-    local commonFolders = {"Enemies", "Mobs", "NPCs", "Monsters", "Characters"}
+    local commonFolders = {"DungeonMobs", "Enemies", "Mobs", "NPCs", "Monsters", "Characters"}
     for _, folderName in pairs(commonFolders) do
         local folder = workspace:FindFirstChild(folderName)
         if folder then
@@ -801,10 +833,15 @@ autoHitBtn.MouseButton1Click:Connect(function()
     
     if autoHitActive then
         print("🎯 Auto Hit ativado! Sistema de cliques automáticos iniciado.")
+        print("⏱️ Delay entre hits configurado para:", hitDelay, "segundos")
         autoHitConnection = game:GetService("RunService").Heartbeat:Connect(function()
             pcall(function()
+                print("🔄 Loop Auto Hit executando...")
                 if autoHit() then
+                    print("✅ Hit realizado, aguardando", hitDelay, "segundos")
                     wait(hitDelay) -- Delay entre hits
+                else
+                    print("❌ Nenhum hit realizado neste ciclo")
                 end
             end)
         end)
@@ -827,12 +864,12 @@ autoHitBtn.MouseButton1Click:Connect(function()
                 floatConnection = nil
             end
             
-            -- Remover BodyVelocity
+            -- Remover BodyPosition
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("HumanoidRootPart") then
-                local bodyVelocity = char.HumanoidRootPart:FindFirstChild("BodyVelocity")
-                if bodyVelocity then
-                    bodyVelocity:Destroy()
+                local bodyPosition = char.HumanoidRootPart:FindFirstChild("BodyPosition")
+                if bodyPosition then
+                    bodyPosition:Destroy()
                 end
             end
             
@@ -845,14 +882,25 @@ end)
 floatBtn.MouseButton1Click:Connect(function()
     floatEnabled = not floatEnabled
     floatBtn.Text = "Flutuar: " .. (floatEnabled and "ON" or "OFF")
+    floatBtn.BackgroundColor3 = floatEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(44,44,60)
+    
     if floatEnabled then
         if not floatConnection then
-            floatConnection = RunService.RenderStepped:Connect(function()
+            floatConnection = RunService.Heartbeat:Connect(function()
                 local char = LocalPlayer.Character
                 local hrp = char and char:FindFirstChild("HumanoidRootPart")
                 if hrp then
-                    hrp.CFrame = CFrame.new(hrp.Position.X, floatY, hrp.Position.Z)
-                    hrp.Velocity = Vector3.new(0,0,0)
+                    local bodyPosition = hrp:FindFirstChild("BodyPosition")
+                    if not bodyPosition then
+                        bodyPosition = Instance.new("BodyPosition")
+                        bodyPosition.MaxForce = Vector3.new(4000, 4000, 4000)
+                        bodyPosition.Position = hrp.Position + Vector3.new(0, 5, 0)
+                        bodyPosition.Parent = hrp
+                    else
+                        -- Manter flutuando 5 studs acima da posição atual
+                        local currentPos = hrp.Position
+                        bodyPosition.Position = Vector3.new(currentPos.X, currentPos.Y + 5, currentPos.Z)
+                    end
                 end
             end)
         end
@@ -860,6 +908,15 @@ floatBtn.MouseButton1Click:Connect(function()
         if floatConnection then
             floatConnection:Disconnect()
             floatConnection = nil
+        end
+        
+        -- Remover BodyPosition quando desativar flutuação
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local bodyPosition = char.HumanoidRootPart:FindFirstChild("BodyPosition")
+            if bodyPosition then
+                bodyPosition:Destroy()
+            end
         end
     end
 end)
@@ -885,7 +942,7 @@ mobBtn.MouseButton1Click:Connect(function()
 end)
 
 print("=== DUNGEON HEROES AUTO KILL SCRIPT CARREGADO ===")
-print("Versão 3.2 - OTIMIZADO BASEADO EM ANÁLISE DE CONSOLE")
+print("Versão 3.3 - FLUTUAÇÃO CORRIGIDA E DEBUG MELHORADO")
 print("\nBotões disponíveis:")
 print("- Auto Hit: Ativa/Desativa ataque automático")
 print("- Flutuar: Ativa/Desativa modo de voo")
@@ -917,15 +974,18 @@ print("• Detecta NPCs por DisplayName diferente")
 print("• Verifica pastas típicas de mobs (npc, mob, enemy, monster)")
 print("• Identifica scripts de NPCs")
 print("")
-print("🔥 MELHORIAS VERSÃO 3.2:")
+print("🔥 MELHORIAS VERSÃO 3.3:")
+print("• ✅ FLUTUAÇÃO CORRIGIDA: BodyPosition ao invés de BodyVelocity")
+print("• ✅ Posição específica (X,Y,Z) baseada na posição do mob")
+print("• ✅ Sistema de debug melhorado com logs detalhados")
+print("• ✅ Flutuação a 8 studs de altura para melhor visibilidade")
+print("• ✅ Logs de detecção de mobs e estatísticas de busca")
+print("• ✅ Correção do loop infinito de flutuação")
 print("• RemoteEvents baseados em console de script funcional")
 print("• Parâmetros específicos: DamageNumber(mob, 773, vector, boolean)")
 print("• HitEffect(mob, vector, 773) e DoEffect(mob, 'MagicBoltProjectile')")
-print("• Teleporte via RemoteEvent TeleportPlayer testado")
 print("• Delay reduzido para 0.05s (20 hits/segundo)")
 print("• Distância de ataque reduzida para 5 studs (mais agressivo)")
-print("• Reconhece nomes de monstros comuns")
-print("• Verifica ausência de Player como owner")
 print("================================================")
 
 --[[
