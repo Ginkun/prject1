@@ -8,7 +8,7 @@ blur.Size = 0
 TweenService:Create(blur, TweenInfo.new(0.5), {Size = 24}):Play()
 
 local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-screenGui.Name = "CeloDevLoader"
+screenGui.Name = "StellarLoader"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 
@@ -23,7 +23,7 @@ bg.BackgroundTransparency = 1
 bg.ZIndex = 0
 TweenService:Create(bg, TweenInfo.new(0.5), {BackgroundTransparency = 0.3}):Play()
 
-local word = "CELODEV"
+local word = "STELLAR"
 local letters = {}
 
 local function tweenOutAndDestroy()
@@ -83,8 +83,8 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/x
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/x2zu/OPEN-SOURCE-UI-ROBLOX/refs/heads/main/X2ZU%20UI%20ROBLOX%20OPEN%20SOURCE/InterfaceManager.luau"))()
 
 local Window = Fluent:CreateWindow({
-    Title = "Dungeon Heroes - Script",
-    SubTitle = "Script em Português",
+    Title = game:GetService("MarketplaceService"):GetProductInfo(94845773826960).Name .. " 〢 Stellar",
+    SubTitle = "discord.gg/FmMuvkaWvG",
     TabWidth = 160,
     Size = UDim2.fromOffset(520, 400),
     Acrylic = false,
@@ -94,15 +94,15 @@ local Window = Fluent:CreateWindow({
 
 local player = game.Players.LocalPlayer
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-gui.Name = "DungeonHeroesMini"
+gui.Name = "StellarHubMini"
 gui.ResetOnSpawn = false
 
 local icon = Instance.new("ImageButton")
-icon.Name = "DungeonIcon"
+icon.Name = "StellarIcon"
 icon.Size = UDim2.new(0, 55, 0, 50)
 icon.Position = UDim2.new(0, 200, 0, 150)
 icon.BackgroundTransparency = 1
-icon.Image = "rbxassetid://105059922903197" -- ícone removido
+icon.Image = "rbxassetid://105059922903197" -- replace with your real asset ID
 icon.Parent = gui
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, 8) -- You can tweak the '8' for more or less rounding
@@ -150,26 +150,26 @@ end)
 
 --Fluent provides Lucide Icons https://lucide.dev/icons/ for the tabs, icons are optional
 local Tabs = {
-    DevUpd = Window:AddTab({ Title = "Informações", Icon = "circle-alert"}),
-    Main = Window:AddTab({ Title = "Farm Automático", Icon = "star" }),
-    Sell = Window:AddTab({ Title = "Vender", Icon = "dollar-sign" }),
+    DevUpd = Window:AddTab({ Title = "Information", Icon = "circle-alert"}),
+    Main = Window:AddTab({ Title = "OP Farm", Icon = "star" }),
+    Sell = Window:AddTab({ Title = "Sell", Icon = "dollar-sign" }),
     Dungeon = Window:AddTab({ Title = "Lobby", Icon = "play" }),
     AntiAfk = Window:AddTab({ Title = "Anti-Afk", Icon = "clock" }),
-    Settings = Window:AddTab({ Title = "Configurações", Icon = "settings" })
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
 local Options = Fluent.Options
 
 do
     Tabs.DevUpd:CreateParagraph("Aligned Paragraph", {
-    Title = "Dungeon Heroes Script",
-    Content = "Obrigado por usar o script! Entre no discord se tiver problemas ou sugestões com o script",
+    Title = "Stellar Hub",
+    Content = "Thank you for using the script! Join the discord if you have problems and suggestions with the script",
     TitleAlignment = "Middle",
     ContentAlignment = Enum.TextXAlignment.Center
 })
     Tabs.DevUpd:CreateParagraph("Aligned Paragraph", {
-    Title = "Informações",
-    Content = "Se você encontrou este script exigindo uma chave, não é a versão oficial. Entre no nosso Discord para obter a versão sem chave!",
+    Title = "Information",
+    Content = "If you found this script requiring a key, it's not the official version. Join our Discord to get the keyless version!",
     TitleAlignment = "Middle",
     ContentAlignment = Enum.TextXAlignment.Center
 })
@@ -177,12 +177,12 @@ do
     Tabs.DevUpd:AddSection("Discord")
     Tabs.DevUpd:AddButton({
         Title = "Discord",
-        Description = "Copie o link para entrar no discord!",
+        Description = "Copy the link to join the discord!",
         Callback = function()
             setclipboard("https://discord.gg/FmMuvkaWvG")
             Fluent:Notify({
-                Title = "Notificação",
-                Content = "Link copiado para a área de transferência com sucesso!",
+                Title = "Notification",
+                Content = "Successfully copied to the clipboard!",
                 SubContent = "", -- Optional
                 Duration = 3 
             })
@@ -190,7 +190,7 @@ do
     })
 
     local Toggle = Tabs.Main:AddToggle("KillAura", {
-        Title = "Aura de Morte",  
+        Title = "Kill Aura",  
         Default = false 
     })
 
@@ -229,7 +229,7 @@ do
         end
     end)
 
-    local Toggle2 = Tabs.Main:AddToggle("AutoStart", {Title = "Início Automático", Default = false })
+    local Toggle2 = Tabs.Main:AddToggle("AutoStart", {Title = "Auto Start", Default = false })
 
     Toggle2:OnChanged(function()
         while Options.AutoStart.Value do
@@ -240,7 +240,7 @@ do
 
     Options.AutoStart:SetValue(false)
 
-    local Toggle4 = Tabs.Main:AddToggle("AutoPlayAgain", {Title = "Jogar Novamente", Default = false })
+    local Toggle4 = Tabs.Main:AddToggle("AutoPlayAgain", {Title = "Play Again", Default = false })
 
     Toggle4:OnChanged(function()
         while Options.AutoPlayAgain.Value do
@@ -283,7 +283,7 @@ do
     local y = 50
     local tweenspeed = 200
     local Toggle3 = Tabs.Main:AddToggle("AutoFarm", {
-        Title = "Farm Automático de Dungeon",
+        Title = "Auto Farm Dungeon",
         Default = false
     })
 
@@ -321,8 +321,8 @@ do
     end)
 
     local tweenspeedslider = Tabs.Main:AddSlider("tweenspeedslider", {
-        Title = "Velocidade de Movimento",
-        Description = "Ajuste até não ser expulso do jogo",
+        Title = "Tween Speed",
+        Description = "Adjust until your not getting kick",
         Default = 200,
         Min = 20,
         Max = 300,
@@ -335,7 +335,7 @@ do
     tweenspeedslider:SetValue(200)
     
     local Distance = Tabs.Main:AddSlider("Distance", {
-        Title = "Distância Y dos mobs",
+        Title = "Distance Y from mobs",
         Default = 50,
         Min = -100,
         Max = 100,
@@ -350,7 +350,7 @@ do
 
     local selected_dungeon = "AstralDungeon"
     local dungeons = Tabs.Dungeon:AddDropdown("dungeons", {
-        Title = "Selecionar Dungeon",
+        Title = "Select Dungeon",
         Values = {"AstralDungeon", "CastleDungeon", "CoveDungeon", "DesertDungeon", "ForestDungeon", "JungleDungeon", "MountainDungeon", "CaveDungeon", "MushroomDungeon"},
         Multi = false,
         Default = 1,
@@ -365,8 +365,8 @@ do
     local selected_difficulties = 1
 
     local difficulties = Tabs.Dungeon:AddDropdown("difficulties", {
-        Title = "Escolher Dificuldade",
-        Values = {"Normal", "Médio", "Difícil", "Insano"},
+        Title = "Choose Difficulty",
+        Values = {"Normal", "Medium", "Hard", "Insane"},
         Multi = false,
         Default = 1,
     })
@@ -376,18 +376,18 @@ do
     difficulties:OnChanged(function(Value)
         if Value == "Normal" then
             selected_difficulties = 1 
-        elseif Value == "Médio" then
+        elseif Value == "Medium" then
             selected_difficulties = 2
-        elseif Value == "Difícil" then
+        elseif Value == "Hard" then
             selected_difficulties = 3
-        elseif Value == "Insano" then
+        elseif Value == "Insane" then
             selected_difficulties = 4
         end
     end)
 
     local selected_player = 1
     local players = Tabs.Dungeon:AddDropdown("players", {
-        Title = "Jogadores",
+        Title = "Players",
         Values = {"1", "2", "3", "4", "5"},
         Multi = false,
         Default = 1,
@@ -410,7 +410,7 @@ do
     end)
 
     Tabs.Dungeon:AddButton({
-        Title = "Entrar na Dungeon",
+        Title = "Enter Dungeon",
         Callback = function()
             local args = {
                 selected_dungeon,
@@ -423,7 +423,7 @@ do
     })
 
     Tabs.Dungeon:AddButton({
-        Title = "Voltar ao Lobby",
+        Title = "Return To Lobby",
         Callback = function()
             game:GetService("ReplicatedStorage").Systems.Dungeons.ExitDungeon:FireServer()
         end
@@ -432,7 +432,7 @@ do
     -- Auto Anti-Afk
     local Toggle4 = Tabs.AntiAfk:AddToggle("AntiAfk", {
         Title = "Anti-Afk", 
-        Description = "Isso impedirá que você seja expulso quando estiver AFK", 
+        Description = "This will prevent you from being kicked when AFK", 
         Default = false 
     })
 
@@ -440,42 +440,42 @@ do
     Toggle4:OnChanged(function()
         task.spawn(function()
             while Options.AntiAfk.Value do
-                -- Simula atividade do jogador para prevenir kick por AFK
+                -- Simulate player activity to prevent AFK kick
                 local VirtualUser = game:GetService("VirtualUser")
                 
-                -- Move o mouse ligeiramente para simular atividade
+                -- Move the mouse slightly to simulate activity
                 VirtualUser:CaptureController()
                 VirtualUser:ClickButton2(Vector2.new())
                 
-                print("Anti-AFK ativado")
+                print("Anti-AFK activated")
                 task.wait(10)
             end
         end)
     end)
     Options.AntiAfk:SetValue(false)
     
-    -- Mapeamento de raridade: nome para valor string
+    -- Rarity mapping: name to string value
     local rarityMap = {
-        Comum = "1",
-        Incomum = "2",
-        Raro = "3",
-        Épico = "4",
-        Lendário = "5",
-        Mítico = "6",
+        Common = "1",
+        Uncommon = "2",
+        Rare = "3",
+        Epic = "4",
+        Legendary = "5",
+        Mythic = "6",
     }
 
-    -- Raridades selecionadas (números string como "1", "2", etc.)
+    -- Selected rarities (string numbers like "1", "2", etc.)
     local selectrarity = {}
 
-    -- Dropdown de raridade
+    -- Rarity dropdown
     local raritymulti = Tabs.Sell:AddDropdown("raritymulti", {
-        Title = "Selecionar Raridade do Item",
-        Values = {"Comum", "Incomum", "Raro", "Épico", "Lendário", "Mítico"},
+        Title = "Select Item Rarity",
+        Values = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic"},
         Multi = true,
-        Default = {"Comum", "Incomum"},
+        Default = {"Common", "Uncommon"},
     })
 
-    -- Converte nomes selecionados para valores de raridade string ("1" a "6")
+    -- Convert selected names to string rarity values ("1" to "6")
     raritymulti:OnChanged(function(Value)
         local converted = {}
         for RarityName, Selected in pairs(Value) do
@@ -486,13 +486,13 @@ do
         selectrarity = converted
     end)
 
-    -- Toggle de venda automática
+    -- Autosell toggle
     local autosellall = Tabs.Sell:AddToggle("autosellall", {
-        Title = "Vender Itens",
+        Title = "Sell Items",
         Default = false,
     })
 
-    -- Lógica de venda
+    -- Selling logic
     autosellall:OnChanged(function()
         while Options.autosellall.Value do
             local player = game:GetService("Players").LocalPlayer
@@ -518,7 +518,7 @@ do
                         :WaitForChild("Systems")
                         :WaitForChild("ItemSelling")
                         :WaitForChild("SellItem")
-                        :FireServer(unpack(args)) -- ou InvokeServer dependendo do seu jogo
+                        :FireServer(unpack(args)) -- or InvokeServer depending on your game
                 end
             end
 
@@ -528,26 +528,26 @@ do
 
 
     local rarityMap = {
-        Comum = "1",
-        Incomum = "2",
-        Raro = "3",
-        Épico = "4",
-        Lendário = "5",
-        Mítico = "6",
+        Common = "1",
+        Uncommon = "2",
+        Rare = "3",
+        Epic = "4",
+        Legendary = "5",
+        Mythic = "6",
     }
 
 
-    local rarities = {"Comum", "Incomum", "Raro", "Épico", "Lendário", "Mítico"}
+    local rarities = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic"}
 
 
     local selectrarityPets = {}
 
 
     local raritymultiPets = Tabs.Sell:AddDropdown("raritymultiPets", {
-        Title = "Selecionar Raridade do Pet",
+        Title = "Select Pet Rarity",
         Values = rarities,
         Multi = true,
-        Default = {"Comum", "Incomum"},
+        Default = {"Common", "Uncommon"},
     })
 
     raritymultiPets:OnChanged(function(Value)
@@ -561,9 +561,9 @@ do
         selectrarityPets = Values
     end)
 
-    -- Toggle de venda automática de pets
+    -- Autosell pets toggle
     local autosellallpet = Tabs.Sell:AddToggle("autosellallpet", {
-        Title = "Vender Pets",
+        Title = "Sell Pets",
         Default = false,
     })
 
@@ -600,11 +600,11 @@ do
         end
     end)
 
-    -- Garante que o toggle esteja desligado por padrão
+    -- Ensure toggle is off by default
     Options.autosellallpet:SetValue(false)
 
 
-    local autoopenpetchest = Tabs.Main:AddToggle("autoopenpetchest", {Title = "Abrir Todos os Baús de Pet", Default = false })
+    local autoopenpetchest = Tabs.Main:AddToggle("autoopenpetchest", {Title = "Open All Pet Chest", Default = false })
 
     autoopenpetchest:OnChanged(function()
         while Options.autoopenpetchest.Value do
@@ -630,23 +630,23 @@ do
 end  
 
 -- Addons:
--- SaveManager (Permite ter um sistema de configuração)
--- InterfaceManager (Permite ter um sistema de gerenciamento de interface)
+-- SaveManager (Allows you to have a configuration system)
+-- InterfaceManager (Allows you to have a interface managment system)
 
--- Entrega a biblioteca para nossos gerenciadores
+-- Hand the library over to our managers
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
 
--- Ignora chaves que são usadas pelo ThemeManager.
--- (não queremos que as configurações salvem temas, queremos?)
+-- Ignore keys that are used by ThemeManager.
+-- (we dont want configs to save themes, do we?)
 
 SaveManager:IgnoreThemeSettings()
--- Você pode adicionar índices de elementos que o gerenciador de salvamento deve ignorar
+-- You can add indexes of elements the save manager should ignore
 SaveManager:SetIgnoreIndexes({})
 
--- caso de uso para fazer desta forma:
--- um hub de scripts pode ter temas em uma pasta global
--- e configurações de jogo em uma pasta separada por jogo
+-- use case for doing it this way:
+-- a script hub could have themes in a global folder
+-- and game configs in a separate folder per game
 InterfaceManager:SetFolder("FluentScriptHub")
 SaveManager:SetFolder("FluentScriptHub/Dungeon Heroes")
 
@@ -659,16 +659,16 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 Window:SelectTab(1)
 
 Fluent:Notify({
-    Title = "Dungeon Heroes Script",
-    Content = "O script foi carregado com sucesso.",
+    Title = "Stellar Hub",
+    Content = "The script has been loaded.",
     Duration = 3
 })
 task.wait(3)
 Fluent:Notify({
-    Title = "Dungeon Heroes Script",
-    Content = "Entre no discord para mais atualizações e scripts",
+    Title = "Stellar Hub",
+    Content = "Join the discord for more updates and keyless scripts",
     Duration = 8
 })
--- Você pode usar SaveManager:LoadAutoloadConfig() para carregar uma configuração
--- que foi marcada para carregar automaticamente!
+-- You can use the SaveManager:LoadAutoloadConfig() to load a config
+-- which has been marked to be one that auto loads!
 SaveManager:LoadAutoloadConfig()
