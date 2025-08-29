@@ -1,165 +1,233 @@
---[[
-Dungeon Heroes Utility Script
-Features:
-- GUI menu with toggles for:
-  - Auto Kill (auto attack mobs in dungeons)
-  - Player Height (set Y/XYZ to float above mobs)
-Instructions:
-- Execute in Roblox executor (for educational purposes only).
-- Works for "Dungeon Heroes" (may require updates if game changes).
-- GUI will appear on the left; toggle features as needed.
-]]
+-- Script de Dungeon para Roblox
+-- Baseado no script open source by tsuo
+-- Foco em sistema de HIT para NPCs/Mobs
 
--- Services
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+-- Configurações Globais
+_G.AutoFarm = false
+_G.FastAttack = false
+_G.FastAttackDelay = 0.1
+_G.SelectWeapon = ""
+_G.AutoHaki = true
+_G.TeleportSpeed = 300
 
--- UI Library (Basic)
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "DungeonHeroesGUI"
-ScreenGui.Parent = game.CoreGui
+-- Detecção do Jogo (PlaceIds comuns de dungeons)
+local DungeonGames = {
+    [2753915549] = "Blox Fruits World 1",
+    [4442272183] = "Blox Fruits World 2", 
+    [7449423635] = "Blox Fruits World 3",
+    [537413528] = "Build A Boat",
+    [286090429] = "Arsenal",
+    [1537690962] = "Bee Swarm Simulator"
+}
 
-local function createButton(text, position)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 180, 0, 36)
-    btn.Position = UDim2.new(0, 10, 0, position)
-    btn.BackgroundColor3 = Color3.fromRGB(44,44,60)
-    btn.BorderSizePixel = 0
-    btn.Text = text
-    btn.TextColor3 = Color3.new(1,1,1)
-    btn.Font = Enum.Font.SourceSansBold
-    btn.TextSize = 20
-    btn.Parent = ScreenGui
-    return btn
+local CurrentGame = DungeonGames[game.PlaceId]
+if not CurrentGame then
+    game:GetService("Players").LocalPlayer:Kick("Jogo não suportado para dungeon farming!")
+    return
 end
 
-local function createLabel(text, position)
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(0, 180, 0, 36)
-    lbl.Position = UDim2.new(0, 10, 0, position)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = text
-    lbl.TextColor3 = Color3.new(1,1,1)
-    lbl.Font = Enum.Font.SourceSans
-    lbl.TextSize = 18
-    lbl.Parent = ScreenGui
-    return lbl
+print("Dungeon Script carregado para: " .. CurrentGame)
+
+-- Função para ativar Haki automaticamente
+function AutoHaki()
+    if not game:GetService("Players").LocalPlayer.Character:FindFirstChild("HasBuso") then
+        game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Buso")
+    end
 end
 
--- Variables
-local autoKill = false
-local floatEnabled = false
-local floatY = 50 -- Default height above ground
-local autoKillConnection
-local floatConnection
+-- Função para equipar arma
+function EquipWeapon(ToolSe)
+    if not _G.NotAutoEquip then
+        if game.Players.LocalPlayer.Backpack:FindFirstChild(ToolSe) then
+            Tool = game.Players.LocalPlayer.Backpack:FindFirstChild(ToolSe)
+            wait(.1)
+            game.Players.LocalPlayer.Character.Humanoid:EquipTool(Tool)
+        end
+    end
+end
 
--- UI
-local yLabel = createLabel("Altura (Y): "..tostring(floatY), 98)
-local upBtn = createButton("Aumentar Altura (+5)", 134)
-local downBtn = createButton("Diminuir Altura (-5)", 174)
-local autoKillBtn = createButton("Auto Kill: OFF", 10)
-local floatBtn = createButton("Flutuar: OFF", 54)
+-- Função de teleporte otimizada
+function topos(Pos)
+    local Distance = (Pos.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+    local Speed
+    
+    if Distance < 25 then
+        Speed = 5000
+    elseif Distance < 50 then
+        Speed = 2000
+    elseif Distance < 150 then
+        Speed = 800
+    elseif Distance < 250 then
+        Speed = 600
+    elseif Distance < 500 then
+        Speed = 300
+    elseif Distance < 750 then
+        Speed = 250
+    elseif Distance >= 1000 then
+        Speed = 200
+    end
+    
+    game:GetService("TweenService"):Create(
+        game:GetService("Players").LocalPlayer.Character.HumanoidRootPart,
+        TweenInfo.new(Distance/Speed, Enum.EasingStyle.Linear),
+        {CFrame = Pos}
+    ):Play()
+end
 
--- Toggle Auto Kill
-autoKillBtn.MouseButton1Click:Connect(function()
-    autoKill = not autoKill
-    autoKillBtn.Text = "Auto Kill: " .. (autoKill and "ON" or "OFF")
-    if autoKill then
-        -- Start attacking
-        if not autoKillConnection then
-            autoKillConnection = RunService.RenderStepped:Connect(function()
-                -- Find nearest mobs (customize for game's mob model)
-                local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if not root then return end
+-- Função para obter a arma equipada
+function GetBladeHit()
+    local CombatFrameworkLib = debug.getupvalues(require(game:GetService("Players").LocalPlayer.PlayerScripts.CombatFramework))
+    local CmrFwLib = CombatFrameworkLib[2]
+    local p13 = CmrFwLib.activeController
+    local weapon = p13.blades[1]
+    if not weapon then 
+        return weapon
+    end
+    while weapon.Parent ~= game.Players.LocalPlayer.Character do
+        weapon = weapon.Parent 
+    end
+    return weapon
+end
 
-                -- Find mobs (may need to adjust for game's structure)
-                for _, mob in pairs(workspace:GetDescendants()) do
-                    if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob ~= LocalPlayer.Character then
-                        local mobRoot = mob:FindFirstChild("HumanoidRootPart") or mob.PrimaryPart
-                        if mobRoot and (mob.Humanoid.Health > 0) then
-                            -- Simulate attack (touch or remote event)
-                            -- Method 1: Move close to mob and simulate attack
-                            root.CFrame = mobRoot.CFrame + Vector3.new(0, 2, 0)
-                            -- Method 2: Fire remote event if found:
-                            -- for _,v in pairs(getgc(true)) do
-                            --   if typeof(v)=="table" and v.Attack then v:Attack() end
-                            -- end
-                            -- Wait a short time to avoid rapid teleports
-                            wait(0.1)
-                        end
-                    end
+-- Função principal de ataque/hit
+function AttackHit()
+    local CombatFrameworkLib = debug.getupvalues(require(game:GetService("Players").LocalPlayer.PlayerScripts.CombatFramework))
+    local CmrFwLib = CombatFrameworkLib[2]
+    local plr = game.Players.LocalPlayer
+    
+    for i = 1, 1 do
+        local bladehit = require(game.ReplicatedStorage.CombatFramework.RigLib).getBladeHits(plr.Character,{plr.Character.HumanoidRootPart},60)
+        local cac = {}
+        local hash = {}
+        
+        for k, v in pairs(bladehit) do
+            if v.Parent:FindFirstChild("HumanoidRootPart") and not hash[v.Parent] then
+                table.insert(cac, v.Parent.HumanoidRootPart)
+                hash[v.Parent] = true
+            end
+        end
+        
+        bladehit = cac
+        if #bladehit > 0 then
+            pcall(function()
+                CmrFwLib.activeController.timeToNextAttack = 1
+                CmrFwLib.activeController.attacking = false
+                CmrFwLib.activeController.blocking = false
+                CmrFwLib.activeController.timeToNextBlock = 0
+                CmrFwLib.activeController.increment = 3
+                CmrFwLib.activeController.hitboxMagnitude = 120
+                CmrFwLib.activeController.focusStart = 0
+                game:GetService("ReplicatedStorage").RigControllerEvent:FireServer("weaponChange",tostring(GetBladeHit()))
+                game:GetService("ReplicatedStorage").RigControllerEvent:FireServer("hit", bladehit, i, "")
+            end)
+        end
+    end
+end
+
+-- Loop de ataque rápido
+spawn(function()
+    while wait(.1) do
+        if _G.FastAttack then
+            pcall(function()
+                repeat task.wait(_G.FastAttackDelay)
+                    AttackHit()
+                until not _G.FastAttack
+            end)
+        end
+    end
+end)
+
+-- Função para encontrar NPCs/Mobs próximos
+function FindNearestEnemy()
+    local nearestEnemy = nil
+    local shortestDistance = math.huge
+    
+    for i,v in pairs(game:GetService("Workspace").Enemies:GetChildren()) do
+        if v.Name and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
+            if v.Humanoid.Health > 0 then
+                local distance = (v.HumanoidRootPart.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+                if distance < shortestDistance then
+                    shortestDistance = distance
+                    nearestEnemy = v
+                end
+            end
+        end
+    end
+    
+    return nearestEnemy
+end
+
+-- Sistema de Farm Automático para Dungeons
+function AutoFarmDungeon()
+    local enemy = FindNearestEnemy()
+    
+    if enemy then
+        repeat wait()
+            -- Ativar Haki se necessário
+            if _G.AutoHaki then
+                AutoHaki()
+            end
+            
+            -- Equipar arma se especificada
+            if _G.SelectWeapon ~= "" then
+                EquipWeapon(_G.SelectWeapon)
+            end
+            
+            -- Teleportar para o inimigo
+            topos(enemy.HumanoidRootPart.CFrame * CFrame.new(0, 20, 0))
+            
+            -- Configurar inimigo para facilitar o hit
+            enemy.HumanoidRootPart.CanCollide = false
+            enemy.HumanoidRootPart.Size = Vector3.new(60, 60, 60)
+            enemy.Humanoid.WalkSpeed = 0
+            
+            -- Ativar ataque rápido
+            _G.FastAttack = true
+            
+            -- Simular clique para atacar
+            game:GetService("VirtualUser"):CaptureController()
+            game:GetService("VirtualUser"):Button1Down(Vector2.new(1280, 672), game.Workspace.CurrentCamera.CFrame)
+            
+        until not _G.AutoFarm or not enemy.Parent or enemy.Humanoid.Health <= 0
+        
+        _G.FastAttack = false
+    end
+end
+
+-- Loop principal de farm
+spawn(function()
+    while wait(1) do
+        if _G.AutoFarm then
+            pcall(function()
+                AutoFarmDungeon()
+            end)
+        end
+    end
+end)
+
+-- Remover efeitos visuais para melhor performance
+spawn(function()
+    while wait() do
+        for i,v in pairs(game:GetService("Workspace")["_WorldOrigin"]:GetChildren()) do
+            pcall(function()
+                if v.Name == ("CurvedRing") or v.Name == ("SlashHit") or v.Name == ("SwordSlash") or v.Name == ("SlashTail") or v.Name == ("Sounds") then
+                    v:Destroy()
                 end
             end)
         end
-    else
-        if autoKillConnection then
-            autoKillConnection:Disconnect()
-            autoKillConnection = nil
-        end
     end
 end)
 
--- Toggle Float
-floatBtn.MouseButton1Click:Connect(function()
-    floatEnabled = not floatEnabled
-    floatBtn.Text = "Flutuar: " .. (floatEnabled and "ON" or "OFF")
-    if floatEnabled then
-        if not floatConnection then
-            floatConnection = RunService.RenderStepped:Connect(function()
-                local char = LocalPlayer.Character
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    hrp.Velocity = Vector3.new(0,0,0)
-                    hrp.CFrame = CFrame.new(hrp.Position.X, floatY, hrp.Position.Z)
-                end
-            end)
-        end
-    else
-        if floatConnection then
-            floatConnection:Disconnect()
-            floatConnection = nil
-        end
-    end
-end)
+-- Interface simples para controle
+print("=== DUNGEON SCRIPT CARREGADO ===")
+print("Comandos disponíveis:")
+print("_G.AutoFarm = true/false -- Ativar/Desativar farm automático")
+print("_G.FastAttack = true/false -- Ativar/Desativar ataque rápido")
+print("_G.SelectWeapon = 'NomeArma' -- Definir arma para equipar")
+print("_G.AutoHaki = true/false -- Ativar/Desativar haki automático")
+print("================================")
 
--- Increase Y
-upBtn.MouseButton1Click:Connect(function()
-    floatY = floatY + 5
-    yLabel.Text = "Altura (Y): "..tostring(floatY)
-end)
-
--- Decrease Y
-downBtn.MouseButton1Click:Connect(function()
-    floatY = floatY - 5
-    yLabel.Text = "Altura (Y): "..tostring(floatY)
-end)
-
--- Draggable GUI (optional)
-local dragToggle, dragInput, dragStart, startPos
-ScreenGui.Enabled = true
-ScreenGui.ResetOnSpawn = false
-ScreenGui.DisplayOrder = 200
-ScreenGui.IgnoreGuiInset = true
-
-local function dragify(gui)
-    gui.Active = true
-    gui.Draggable = true
-end
-
-for _, v in ipairs(ScreenGui:GetChildren()) do
-    if v:IsA("TextButton") or v:IsA("TextLabel") then
-        dragify(v)
-    end
-end
-
--- Notice
-print("Dungeon Heroes Script Loaded! GUI on left of screen.")
-
---[[
-Obs:
-- O ataque automático depende da estrutura do jogo. Se os mobs tiverem um RemoteEvent para atacar, substitua o método de ataque.
-- A função de flutuar pode ser ajustada para X/Z se quiser movimentos laterais (adicione sliders/inputs).
-- Para evitar detecção, use moderadamente.
-]]
+-- Exemplo de uso:
+-- _G.AutoFarm = true
+-- _G.SelectWeapon = "Katana"
+-- _G.FastAttack = true
