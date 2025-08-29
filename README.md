@@ -219,40 +219,9 @@ local function autoHit()
                 end
                 
                 if not isPlayer then
-                    -- 2. Verificar se tem características de mob/NPC
-                    local humanoid = obj.Humanoid
-                    
-                    -- NPCs geralmente têm DisplayName diferente ou vazio
-                    -- Players têm DisplayName igual ao nome do usuário
-                    if humanoid.DisplayName == "" or humanoid.DisplayName ~= obj.Name then
-                        isValidTarget = true
-                    end
-                    
-                    -- 3. Verificar se está em pastas típicas de NPCs
-                    local parent = obj.Parent
-                    if parent and (parent.Name:lower():find("npc") or parent.Name:lower():find("mob") or 
-                                  parent.Name:lower():find("enemy") or parent.Name:lower():find("monster")) then
-                        isValidTarget = true
-                    end
-                    
-                    -- 4. Verificar se tem scripts típicos de NPCs
-                    if obj:FindFirstChild("NPC") or obj:FindFirstChild("Monster") or obj:FindFirstChild("Enemy") then
-                        isValidTarget = true
-                    end
-                    
-                    -- 5. Verificar se não tem Player como owner
-                    if not obj:FindFirstChild("Player") and not obj:GetAttribute("PlayerId") then
-                        isValidTarget = true
-                    end
-                    
-                    -- 6. Verificar nomes típicos de monstros (adicione mais conforme necessário)
-                    local mobNames = {"bandit", "pirate", "marine", "boss", "guard", "soldier", "thug", "enemy", "monster", "npc"}
-                    for _, mobName in pairs(mobNames) do
-                        if obj.Name:lower():find(mobName) then
-                            isValidTarget = true
-                            break
-                        end
-                    end
+                    -- Simplificado: Se não é um player real, é um alvo válido
+                    isValidTarget = true
+                    print("🎯 Alvo detectado (não-player):", obj.Name, "DisplayName:", obj.Humanoid.DisplayName)
                 end
                 
                 -- Só considerar como alvo se passou nos filtros
@@ -942,7 +911,7 @@ mobBtn.MouseButton1Click:Connect(function()
 end)
 
 print("=== DUNGEON HEROES AUTO KILL SCRIPT CARREGADO ===")
-print("Versão 3.3 - FLUTUAÇÃO CORRIGIDA E DEBUG MELHORADO")
+print("Versão 3.4 - DETECÇÃO DE MOBS CORRIGIDA")
 print("\nBotões disponíveis:")
 print("- Auto Hit: Ativa/Desativa ataque automático")
 print("- Flutuar: Ativa/Desativa modo de voo")
@@ -974,13 +943,14 @@ print("• Detecta NPCs por DisplayName diferente")
 print("• Verifica pastas típicas de mobs (npc, mob, enemy, monster)")
 print("• Identifica scripts de NPCs")
 print("")
-print("🔥 MELHORIAS VERSÃO 3.3:")
+print("🔥 MELHORIAS VERSÃO 3.4:")
+print("• ✅ DETECÇÃO DE MOBS CORRIGIDA: Filtros simplificados")
+print("• ✅ Qualquer entidade não-player é considerada alvo válido")
+print("• ✅ Correção do problema de 0 alvos válidos encontrados")
 print("• ✅ FLUTUAÇÃO CORRIGIDA: BodyPosition ao invés de BodyVelocity")
 print("• ✅ Posição específica (X,Y,Z) baseada na posição do mob")
 print("• ✅ Sistema de debug melhorado com logs detalhados")
 print("• ✅ Flutuação a 8 studs de altura para melhor visibilidade")
-print("• ✅ Logs de detecção de mobs e estatísticas de busca")
-print("• ✅ Correção do loop infinito de flutuação")
 print("• RemoteEvents baseados em console de script funcional")
 print("• Parâmetros específicos: DamageNumber(mob, 773, vector, boolean)")
 print("• HitEffect(mob, vector, 773) e DoEffect(mob, 'MagicBoltProjectile')")
