@@ -1,3 +1,21 @@
+--[[
+    DUNGEON HEROES SCRIPT - SISTEMA DE PERSISTÊNCIA AUTOMÁTICA
+    
+    Este script possui um sistema avançado de persistência que mantém o script ativo
+    mesmo quando você muda de mundo/servidor. Para usar:
+    
+    1. Substitua "YOUR_SCRIPT_URL_HERE" pela URL real do seu script (linha ~690)
+    2. O script irá automaticamente se reinjetar quando necessário
+    3. Suas configurações serão salvas automaticamente antes de teleportes
+    
+    Recursos de persistência:
+    - Detecção automática de mudança de mundo
+    - Reinjeção automática após teleporte
+    - Proteção contra múltiplas instâncias
+    - Monitor contínuo para garantir funcionamento
+    - Sistema de backup em caso de falhas
+--]]
+
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
@@ -8,7 +26,7 @@ blur.Size = 0
 TweenService:Create(blur, TweenInfo.new(0.5), {Size = 24}):Play()
 
 local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-screenGui.Name = "StellarLoader"
+screenGui.Name = "DungeonHeroesLoader"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 
@@ -78,6 +96,20 @@ if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
+-- Proteção contra múltiplas instâncias do script
+local function checkExistingScript()
+    local playerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+    local existingGui = playerGui:FindFirstChild("DungeonHeroesHubMini")
+    
+    if existingGui then
+        -- Se já existe uma instância, remove a antiga
+        existingGui:Destroy()
+        task.wait(0.5)
+    end
+end
+
+checkExistingScript()
+
 local Fluent = loadstring(game:HttpGet("https://github.com/ActualMasterOogway/Fluent-Renewed/releases/latest/download/Fluent.luau"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/x2zu/OPEN-SOURCE-UI-ROBLOX/refs/heads/main/X2ZU%20UI%20ROBLOX%20OPEN%20SOURCE/SaveManager.luau"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/x2zu/OPEN-SOURCE-UI-ROBLOX/refs/heads/main/X2ZU%20UI%20ROBLOX%20OPEN%20SOURCE/InterfaceManager.luau"))()
@@ -94,11 +126,11 @@ local Window = Fluent:CreateWindow({
 
 local player = game.Players.LocalPlayer
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-gui.Name = "StellarHubMini"
+gui.Name = "DungeonHeroesHubMini"
 gui.ResetOnSpawn = false
 
 local icon = Instance.new("ImageButton")
-icon.Name = "StellarIcon"
+icon.Name = "DungeonHeroesIcon"
 icon.Size = UDim2.new(0, 55, 0, 50)
 icon.Position = UDim2.new(0, 200, 0, 150)
 icon.BackgroundTransparency = 1
@@ -150,26 +182,26 @@ end)
 
 --Fluent provides Lucide Icons https://lucide.dev/icons/ for the tabs, icons are optional
 local Tabs = {
-    DevUpd = Window:AddTab({ Title = "Information", Icon = "circle-alert"}),
-    Main = Window:AddTab({ Title = "OP Farm", Icon = "star" }),
-    Sell = Window:AddTab({ Title = "Sell", Icon = "dollar-sign" }),
+    DevUpd = Window:AddTab({ Title = "Informações", Icon = "circle-alert"}),
+    Main = Window:AddTab({ Title = "Farm Automático", Icon = "star" }),
+    Sell = Window:AddTab({ Title = "Vender", Icon = "dollar-sign" }),
     Dungeon = Window:AddTab({ Title = "Lobby", Icon = "play" }),
     AntiAfk = Window:AddTab({ Title = "Anti-Afk", Icon = "clock" }),
-    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+    Settings = Window:AddTab({ Title = "Configurações", Icon = "settings" })
 }
 
 local Options = Fluent.Options
 
 do
     Tabs.DevUpd:CreateParagraph("Aligned Paragraph", {
-    Title = "Stellar Hub",
-    Content = "Thank you for using the script! Join the discord if you have problems and suggestions with the script",
+    Title = "Dungeon Heroes Script",
+    Content = "Obrigado por usar o script! Entre no discord se tiver problemas ou sugestões com o script",
     TitleAlignment = "Middle",
     ContentAlignment = Enum.TextXAlignment.Center
 })
     Tabs.DevUpd:CreateParagraph("Aligned Paragraph", {
-    Title = "Information",
-    Content = "If you found this script requiring a key, it's not the official version. Join our Discord to get the keyless version!",
+    Title = "Informações",
+    Content = "Se você encontrou este script exigindo uma chave, não é a versão oficial. Entre no nosso Discord para obter a versão sem chave!",
     TitleAlignment = "Middle",
     ContentAlignment = Enum.TextXAlignment.Center
 })
@@ -177,12 +209,12 @@ do
     Tabs.DevUpd:AddSection("Discord")
     Tabs.DevUpd:AddButton({
         Title = "Discord",
-        Description = "Copy the link to join the discord!",
+        Description = "Copie o link para entrar no discord!",
         Callback = function()
             setclipboard("https://discord.gg/FmMuvkaWvG")
             Fluent:Notify({
-                Title = "Notification",
-                Content = "Successfully copied to the clipboard!",
+                Title = "Notificação",
+                Content = "Link copiado para a área de transferência com sucesso!",
                 SubContent = "", -- Optional
                 Duration = 3 
             })
@@ -190,7 +222,7 @@ do
     })
 
     local Toggle = Tabs.Main:AddToggle("KillAura", {
-        Title = "Kill Aura",  
+        Title = "Aura de Morte",  
         Default = false 
     })
 
@@ -229,7 +261,7 @@ do
         end
     end)
 
-    local Toggle2 = Tabs.Main:AddToggle("AutoStart", {Title = "Auto Start", Default = false })
+    local Toggle2 = Tabs.Main:AddToggle("AutoStart", {Title = "Início Automático", Default = false })
 
     Toggle2:OnChanged(function()
         while Options.AutoStart.Value do
@@ -240,7 +272,7 @@ do
 
     Options.AutoStart:SetValue(false)
 
-    local Toggle4 = Tabs.Main:AddToggle("AutoPlayAgain", {Title = "Play Again", Default = false })
+    local Toggle4 = Tabs.Main:AddToggle("AutoPlayAgain", {Title = "Jogar Novamente", Default = false })
 
     Toggle4:OnChanged(function()
         while Options.AutoPlayAgain.Value do
@@ -283,7 +315,7 @@ do
     local y = 50
     local tweenspeed = 200
     local Toggle3 = Tabs.Main:AddToggle("AutoFarm", {
-        Title = "Auto Farm Dungeon",
+        Title = "Farm Automático de Dungeon",
         Default = false
     })
 
@@ -321,8 +353,8 @@ do
     end)
 
     local tweenspeedslider = Tabs.Main:AddSlider("tweenspeedslider", {
-        Title = "Tween Speed",
-        Description = "Adjust until your not getting kick",
+        Title = "Velocidade de Movimento",
+        Description = "Ajuste até não ser expulso do jogo",
         Default = 200,
         Min = 20,
         Max = 300,
@@ -335,7 +367,7 @@ do
     tweenspeedslider:SetValue(200)
     
     local Distance = Tabs.Main:AddSlider("Distance", {
-        Title = "Distance Y from mobs",
+        Title = "Distância Y dos mobs",
         Default = 50,
         Min = -100,
         Max = 100,
@@ -350,7 +382,7 @@ do
 
     local selected_dungeon = "AstralDungeon"
     local dungeons = Tabs.Dungeon:AddDropdown("dungeons", {
-        Title = "Select Dungeon",
+        Title = "Selecionar Dungeon",
         Values = {"AstralDungeon", "CastleDungeon", "CoveDungeon", "DesertDungeon", "ForestDungeon", "JungleDungeon", "MountainDungeon", "CaveDungeon", "MushroomDungeon"},
         Multi = false,
         Default = 1,
@@ -365,7 +397,7 @@ do
     local selected_difficulties = 1
 
     local difficulties = Tabs.Dungeon:AddDropdown("difficulties", {
-        Title = "Choose Difficulty",
+        Title = "Escolher Dificuldade",
         Values = {"Normal", "Medium", "Hard", "Insane"},
         Multi = false,
         Default = 1,
@@ -387,7 +419,7 @@ do
 
     local selected_player = 1
     local players = Tabs.Dungeon:AddDropdown("players", {
-        Title = "Players",
+        Title = "Jogadores",
         Values = {"1", "2", "3", "4", "5"},
         Multi = false,
         Default = 1,
@@ -410,7 +442,7 @@ do
     end)
 
     Tabs.Dungeon:AddButton({
-        Title = "Enter Dungeon",
+        Title = "Entrar na Dungeon",
         Callback = function()
             local args = {
                 selected_dungeon,
@@ -423,7 +455,7 @@ do
     })
 
     Tabs.Dungeon:AddButton({
-        Title = "Return To Lobby",
+        Title = "Voltar ao Lobby",
         Callback = function()
             game:GetService("ReplicatedStorage").Systems.Dungeons.ExitDungeon:FireServer()
         end
@@ -432,7 +464,7 @@ do
     -- Auto Anti-Afk
     local Toggle4 = Tabs.AntiAfk:AddToggle("AntiAfk", {
         Title = "Anti-Afk", 
-        Description = "This will prevent you from being kicked when AFK", 
+        Description = "Isso impedirá que você seja expulso quando estiver AFK", 
         Default = false 
     })
 
@@ -469,7 +501,7 @@ do
 
     -- Rarity dropdown
     local raritymulti = Tabs.Sell:AddDropdown("raritymulti", {
-        Title = "Select Item Rarity",
+        Title = "Selecionar Raridade do Item",
         Values = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic"},
         Multi = true,
         Default = {"Common", "Uncommon"},
@@ -488,7 +520,7 @@ do
 
     -- Autosell toggle
     local autosellall = Tabs.Sell:AddToggle("autosellall", {
-        Title = "Sell Items",
+        Title = "Vender Itens",
         Default = false,
     })
 
@@ -544,7 +576,7 @@ do
 
 
     local raritymultiPets = Tabs.Sell:AddDropdown("raritymultiPets", {
-        Title = "Select Pet Rarity",
+        Title = "Selecionar Raridade do Pet",
         Values = rarities,
         Multi = true,
         Default = {"Common", "Uncommon"},
@@ -563,7 +595,7 @@ do
 
     -- Autosell pets toggle
     local autosellallpet = Tabs.Sell:AddToggle("autosellallpet", {
-        Title = "Sell Pets",
+        Title = "Vender Pets",
         Default = false,
     })
 
@@ -604,7 +636,7 @@ do
     Options.autosellallpet:SetValue(false)
 
 
-    local autoopenpetchest = Tabs.Main:AddToggle("autoopenpetchest", {Title = "Open All Pet Chest", Default = false })
+    local autoopenpetchest = Tabs.Main:AddToggle("autoopenpetchest", {Title = "Abrir Todos os Baús de Pet", Default = false })
 
     autoopenpetchest:OnChanged(function()
         while Options.autoopenpetchest.Value do
@@ -659,16 +691,89 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 Window:SelectTab(1)
 
 Fluent:Notify({
-    Title = "Stellar Hub",
-    Content = "The script has been loaded.",
+    Title = "Dungeon Heroes Script",
+    Content = "O script foi carregado com sucesso.",
     Duration = 3
 })
 task.wait(3)
 Fluent:Notify({
-    Title = "Stellar Hub",
-    Content = "Join the discord for more updates and keyless scripts",
+    Title = "Dungeon Heroes Script",
+    Content = "Entre no discord para mais atualizações e scripts",
     Duration = 8
 })
+-- Sistema de persistência entre mundos melhorado
+local function setupWorldPersistence()
+    local currentPlaceId = game.PlaceId
+    local scriptUrl = "YOUR_SCRIPT_URL_HERE" -- Substitua pela URL do seu script
+    
+    -- Salva o script na pasta _G para persistência global
+    if not _G.DungeonHeroesScriptLoaded then
+        _G.DungeonHeroesScriptLoaded = true
+        _G.DungeonHeroesScriptUrl = scriptUrl
+    end
+    
+    -- Detecta mudança de mundo/lugar
+    game:GetService("Players").LocalPlayer.OnTeleport:Connect(function(State)
+        if State == Enum.TeleportState.Started then
+            -- Salva configurações antes do teleporte
+            pcall(function()
+                SaveManager:Save()
+            end)
+            
+            -- Marca para reinjeção após teleporte
+            _G.DungeonHeroesNeedsReinjection = true
+        end
+    end)
+    
+    -- Sistema de reinjeção automática após spawn
+    game:GetService("Players").LocalPlayer.CharacterAdded:Connect(function(character)
+        task.wait(5) -- Aguarda o mundo carregar completamente
+        
+        -- Verifica se precisa reinjetar
+        if _G.DungeonHeroesNeedsReinjection then
+            _G.DungeonHeroesNeedsReinjection = false
+            
+            local existingGui = player:WaitForChild("PlayerGui"):FindFirstChild("DungeonHeroesHubMini")
+            if not existingGui and _G.DungeonHeroesScriptUrl then
+                -- Reinjeta o script
+                pcall(function()
+                    loadstring(game:HttpGet(_G.DungeonHeroesScriptUrl))()
+                end)
+            end
+        end
+    end)
+    
+    -- Monitor contínuo para garantir que o script permaneça ativo
+    task.spawn(function()
+        while _G.DungeonHeroesScriptLoaded do
+            task.wait(10)
+            
+            -- Verifica se a GUI ainda existe
+            local playerGui = game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
+            if playerGui then
+                local existingGui = playerGui:FindFirstChild("DungeonHeroesHubMini")
+                
+                -- Se a GUI não existe e não estamos em processo de teleporte
+                if not existingGui and not _G.DungeonHeroesNeedsReinjection then
+                    task.wait(2)
+                    
+                    -- Verifica novamente após delay
+                    existingGui = playerGui:FindFirstChild("DungeonHeroesHubMini")
+                    if not existingGui and _G.DungeonHeroesScriptUrl then
+                        -- Reinjeta o script
+                        pcall(function()
+                            loadstring(game:HttpGet(_G.DungeonHeroesScriptUrl))()
+                        end)
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- Inicia o sistema de persistência
+setupWorldPersistence()
+
 -- You can use the SaveManager:LoadAutoloadConfig() to load a config
 -- which has been marked to be one that auto loads!
 SaveManager:LoadAutoloadConfig()
