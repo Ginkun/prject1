@@ -158,24 +158,81 @@ local function autoHit()
     -- Equipar arma automaticamente
     equipWeapon()
     
-    -- Encontrar o mob mais próximo
+    -- Encontrar o mob mais próximo (apenas monstros/NPCs, não players)
     local nearestMob = nil
     local shortestDistance = math.huge
     
     for _, obj in pairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
+            -- Verificar se não é o próprio player
             if obj ~= char and obj.Humanoid.Health > 0 then
-                local distance = (rootPart.Position - obj.HumanoidRootPart.Position).Magnitude
-                if distance < shortestDistance and distance <= 50 then -- Alcance de 50 studs
-                    shortestDistance = distance
-                    nearestMob = obj
+                -- Filtros para detectar apenas monstros/NPCs:
+                local isValidTarget = false
+                
+                -- 1. Não deve ser um player (Players service)
+                local isPlayer = false
+                for _, player in pairs(game.Players:GetPlayers()) do
+                    if player.Character == obj then
+                        isPlayer = true
+                        break
+                    end
+                end
+                
+                if not isPlayer then
+                    -- 2. Verificar se tem características de mob/NPC
+                    local humanoid = obj.Humanoid
+                    
+                    -- NPCs geralmente têm DisplayName diferente ou vazio
+                    -- Players têm DisplayName igual ao nome do usuário
+                    if humanoid.DisplayName == "" or humanoid.DisplayName ~= obj.Name then
+                        isValidTarget = true
+                    end
+                    
+                    -- 3. Verificar se está em pastas típicas de NPCs
+                    local parent = obj.Parent
+                    if parent and (parent.Name:lower():find("npc") or parent.Name:lower():find("mob") or 
+                                  parent.Name:lower():find("enemy") or parent.Name:lower():find("monster")) then
+                        isValidTarget = true
+                    end
+                    
+                    -- 4. Verificar se tem scripts típicos de NPCs
+                    if obj:FindFirstChild("NPC") or obj:FindFirstChild("Monster") or obj:FindFirstChild("Enemy") then
+                        isValidTarget = true
+                    end
+                    
+                    -- 5. Verificar se não tem Player como owner
+                    if not obj:FindFirstChild("Player") and not obj:GetAttribute("PlayerId") then
+                        isValidTarget = true
+                    end
+                    
+                    -- 6. Verificar nomes típicos de monstros (adicione mais conforme necessário)
+                    local mobNames = {"bandit", "pirate", "marine", "boss", "guard", "soldier", "thug", "enemy", "monster", "npc"}
+                    for _, mobName in pairs(mobNames) do
+                        if obj.Name:lower():find(mobName) then
+                            isValidTarget = true
+                            break
+                        end
+                    end
+                end
+                
+                -- Só considerar como alvo se passou nos filtros
+                if isValidTarget then
+                    local distance = (rootPart.Position - obj.HumanoidRootPart.Position).Magnitude
+                    if distance < shortestDistance and distance <= 50 then -- Alcance de 50 studs
+                        shortestDistance = distance
+                        nearestMob = obj
+                    end
                 end
             end
         end
     end
     
     if nearestMob then
-        print("🎯 Auto Hit ativo - Atacando:", nearestMob.Name, "Distância:", math.floor(shortestDistance))
+        print("🎯 Auto Hit ativo - Atacando MOB:", nearestMob.Name, "Distância:", math.floor(shortestDistance))
+        print("📍 Tipo de alvo confirmado: NPC/Monster (não é player)")
+        
+        -- Chamar função de RemoteEvents específicos
+        trySpecificRemotes(nearestMob)
         
         -- Simular clique do mouse (método 1)
         pcall(function()
@@ -234,6 +291,38 @@ local function autoHit()
         end)
         
         return true -- Hit realizado
+    else
+        -- Debug: mostrar por que nenhum mob foi encontrado
+        local playersNearby = 0
+        local npcsNearby = 0
+        local totalEntities = 0
+        
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
+                if obj ~= char and obj.Humanoid.Health > 0 then
+                    totalEntities = totalEntities + 1
+                    local distance = (rootPart.Position - obj.HumanoidRootPart.Position).Magnitude
+                    if distance <= 50 then
+                        -- Verificar se é player
+                        local isPlayer = false
+                        for _, player in pairs(game.Players:GetPlayers()) do
+                            if player.Character == obj then
+                                isPlayer = true
+                                playersNearby = playersNearby + 1
+                                break
+                            end
+                        end
+                        if not isPlayer then
+                            npcsNearby = npcsNearby + 1
+                        end
+                    end
+                end
+            end
+        end
+        
+        if totalEntities > 0 then
+            print("🔍 Debug Auto Hit - Entidades próximas (50 studs): Players:", playersNearby, "NPCs:", npcsNearby)
+        end
     end
     
     return false -- Nenhum mob encontrado
@@ -694,9 +783,9 @@ mobBtn.MouseButton1Click:Connect(function()
 end)
 
 print("=== DUNGEON HEROES AUTO KILL SCRIPT CARREGADO ===")
-print("Versão com debugging avançado - ERROS CORRIGIDOS")
+print("Versão 3.1 com debugging avançado - DETECÇÃO APRIMORADA")
 print("\nBotões disponíveis:")
-print("- Auto Kill: Ativa/Desativa ataque automático")
+print("- Auto Hit: Ativa/Desativa ataque automático")
 print("- Flutuar: Ativa/Desativa modo de voo")
 print("- Listar Remotes: Mostra todos os RemoteEvents encontrados")
 print("- Buscar Mobs: Procura por mobs/NPCs no jogo")
@@ -704,7 +793,7 @@ print("\nO script irá mostrar informações detalhadas no console F9!")
 print("✅ Todas as verificações de segurança foram adicionadas")
 print("✅ Erros de table.concat foram corrigidos")
 print("✅ Proteções pcall adicionadas em todas as funções críticas")
-print("✅ Script carregado com sucesso! Versão 3.0 - Sistema AUTO HIT implementado")
+print("✅ Script carregado com sucesso! Versão 3.1 - Sistema AUTO HIT implementado")
 print("📋 Use os botões: Auto Hit, Float, Listar Remotes, Buscar Mobs")
 print("🔍 Verifique o console F9 para logs de debugging e atividade de rede")
 print("🎯 Sistema AUTO HIT: Simula cliques automáticos para 100% de acerto")
@@ -713,11 +802,19 @@ print("🗡️ Equipamento automático de armas incluído")
 print("")
 print("📖 COMO USAR O AUTO HIT:")
 print("1. Clique em 'Auto Hit' para ativar/desativar")
-print("2. O sistema encontrará mobs automaticamente (alcance: 50 studs)")
+print("2. O sistema encontrará APENAS mobs/NPCs automaticamente (alcance: 50 studs)")
 print("3. Equipará armas da mochila automaticamente")
 print("4. Simulará cliques do mouse para atacar")
 print("5. Testará múltiplos métodos de ataque simultaneamente")
 print("6. Delay configurável entre hits (atual: 0.1s)")
+print("")
+print("🛡️ FILTROS DE DETECÇÃO DE MOBS:")
+print("• Exclui todos os players automaticamente")
+print("• Detecta NPCs por DisplayName diferente")
+print("• Verifica pastas típicas de mobs (npc, mob, enemy, monster)")
+print("• Identifica scripts de NPCs")
+print("• Reconhece nomes de monstros comuns")
+print("• Verifica ausência de Player como owner")
 print("================================================")
 
 --[[
