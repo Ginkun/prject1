@@ -117,7 +117,7 @@ local floatY = 50
 local floatEnabled = false
 local autoHitActive = false
 local autoHitConnection, floatConnection
-local hitDelay = 0.1 -- Delay entre hits em segundos
+local hitDelay = 0.05 -- Delay entre hits em segundos (mais agressivo baseado no console observado)
 
 -- Função para equipar automaticamente uma arma
 local function equipWeapon()
@@ -154,6 +154,29 @@ local function autoHit()
     local humanoid = char:FindFirstChild("Humanoid")
     local rootPart = char:FindFirstChild("HumanoidRootPart")
     if not humanoid or not rootPart then return end
+    
+    -- Ativar flutuação automaticamente quando Auto Hit estiver ON
+    if not floatEnabled then
+        floatEnabled = true
+        floatBtn.Text = "Flutuar: ON"
+        floatBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        
+        -- Iniciar flutuação
+        if floatConnection then floatConnection:Disconnect() end
+        floatConnection = RunService.Heartbeat:Connect(function()
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local bodyVelocity = char.HumanoidRootPart:FindFirstChild("BodyVelocity")
+                if not bodyVelocity then
+                    bodyVelocity = Instance.new("BodyVelocity")
+                    bodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
+                    bodyVelocity.Velocity = Vector3.new(0, floatY, 0)
+                    bodyVelocity.Parent = char.HumanoidRootPart
+                end
+            end
+        end)
+        
+        print("🌟 Flutuação ativada automaticamente com Auto Hit")
+    end
     
     -- Equipar arma automaticamente
     equipWeapon()
@@ -230,6 +253,36 @@ local function autoHit()
     if nearestMob then
         print("🎯 Auto Hit ativo - Atacando MOB:", nearestMob.Name, "Distância:", math.floor(shortestDistance))
         print("📍 Tipo de alvo confirmado: NPC/Monster (não é player)")
+        
+        -- Teleporte automático mais agressivo (baseado no console observado)
+        local targetPosition = nearestMob.HumanoidRootPart.Position
+        local safeDistance = 5 -- Distância mais próxima para atacar
+        local direction = (rootPart.Position - targetPosition).Unit
+        local teleportPosition = targetPosition + (direction * safeDistance)
+        
+        pcall(function()
+            -- Teleportar flutuando até o mob (mais agressivo)
+            rootPart.CFrame = CFrame.new(teleportPosition + Vector3.new(0, 3, 0)) -- +3 para manter flutuando
+            print("🌀 Teleportado para mob:", nearestMob.Name, "Posição:", teleportPosition)
+        end)
+        
+        -- Testar teleporte via RemoteEvent também
+        pcall(function()
+            local teleportEvent = game.ReplicatedStorage:FindFirstChild("Systems")
+            if teleportEvent then
+                teleportEvent = teleportEvent:FindFirstChild("Teleport")
+                if teleportEvent then
+                    teleportEvent = teleportEvent:FindFirstChild("TeleportPlayer")
+                    if teleportEvent and teleportEvent:IsA("RemoteEvent") then
+                        teleportEvent:FireServer(nearestMob)
+                        print("🌀 Teleporte via RemoteEvent testado")
+                    end
+                end
+            end
+        end)
+        
+        -- Aguardar menos tempo para ser mais agressivo
+        wait(0.05)
         
         -- Chamar função de RemoteEvents específicos
         trySpecificRemotes(nearestMob)
@@ -334,8 +387,14 @@ local function trySpecificRemotes(mob)
     
     print("🎯 Testando RemoteEvents específicos do jogo...")
     
-    -- Eventos de Combat (mais promissores)
+    -- Eventos de Combat baseados no console observado (PRIORIDADE ALTA)
     local combatEvents = {
+        "ReplicatedStorage.Systems.Combat.DamageNumber",
+        "ReplicatedStorage.Systems.Effects.HitEffect",
+        "ReplicatedStorage.Systems.Effects.DoEffect",
+        "ReplicatedStorage.Systems.SFX.PlaySFX",
+        "ReplicatedStorage.Systems.Combat.HitboxIndicator",
+        "ReplicatedStorage.Systems.Combat.AddToHitList",
         "ReplicatedStorage.Systems.Combat.KeyReward",
         "ReplicatedStorage.Systems.Combat.ChestReward", 
         "ReplicatedStorage.Systems.Combat.HitDestructibles",
@@ -352,11 +411,27 @@ local function trySpecificRemotes(mob)
         
         if event and event:IsA("RemoteEvent") then
             print("⚔️ Testando evento de combate:", event.Name)
-            pcall(function() event:FireServer(mob) end)
-            pcall(function() event:FireServer(mob.HumanoidRootPart) end)
-            pcall(function() event:FireServer(mob.Name) end)
-            pcall(function() event:FireServer("attack", mob) end)
-            pcall(function() event:FireServer("damage", mob, 100) end)
+            
+            -- Padrões baseados no console observado
+            if event.Name == "DamageNumber" then
+                pcall(function() event:FireServer(mob, 773, Vector3.new(0,0,0), true) end)
+                pcall(function() event:FireServer(mob.HumanoidRootPart, 773, Vector3.new(0,0,0), true) end)
+            elseif event.Name == "HitEffect" then
+                pcall(function() event:FireServer(mob, Vector3.new(0,0,0), 773) end)
+                pcall(function() event:FireServer(mob.HumanoidRootPart, Vector3.new(0,0,0), 773) end)
+            elseif event.Name == "DoEffect" then
+                pcall(function() event:FireServer(mob, "MagicBoltProjectile", Vector3.new(0,0,0)) end)
+                pcall(function() event:FireServer(mob.HumanoidRootPart, "MagicBoltProjectile", Vector3.new(0,0,0)) end)
+            elseif event.Name == "PlaySFX" then
+                pcall(function() event:FireServer("Scepter_Impact", Vector3.new(0,0,0), 0.1) end)
+            else
+                -- Métodos padrão para outros eventos
+                pcall(function() event:FireServer(mob) end)
+                pcall(function() event:FireServer(mob.HumanoidRootPart) end)
+                pcall(function() event:FireServer(mob.Name) end)
+                pcall(function() event:FireServer("attack", mob) end)
+                pcall(function() event:FireServer("damage", mob, 100) end)
+            end
         end
     end
     
@@ -470,7 +545,7 @@ local function trySpecificRemotes(mob)
         end
     end
     
-    -- Eventos de Teleport (podem ter mecânicas especiais)
+    -- Eventos de Teleport baseados no console observado
     local teleportEvents = {
         "ReplicatedStorage.Systems.Teleport.TeleportPlayer",
         "ReplicatedStorage.Systems.Teleport.TowerTeleport",
@@ -486,6 +561,9 @@ local function trySpecificRemotes(mob)
         
         if event and event:IsA("RemoteEvent") then
             print("🌀 Testando evento de teleport:", event.Name)
+            -- Usar padrão observado no console: apenas userdata
+            pcall(function() event:FireServer(mob) end)
+            pcall(function() event:FireServer(mob.HumanoidRootPart) end)
             pcall(function() event:FireServer(mob.Position) end)
             pcall(function() event:FireServer(mob.HumanoidRootPart.Position) end)
         end
@@ -736,6 +814,30 @@ autoHitBtn.MouseButton1Click:Connect(function()
             autoHitConnection:Disconnect()
             autoHitConnection = nil
         end
+        
+        -- Desativar flutuação automaticamente quando Auto Hit for desligado
+        if floatEnabled then
+            floatEnabled = false
+            floatBtn.Text = "Flutuar: OFF"
+            floatBtn.BackgroundColor3 = Color3.fromRGB(44,44,60)
+            
+            -- Parar flutuação
+            if floatConnection then
+                floatConnection:Disconnect()
+                floatConnection = nil
+            end
+            
+            -- Remover BodyVelocity
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local bodyVelocity = char.HumanoidRootPart:FindFirstChild("BodyVelocity")
+                if bodyVelocity then
+                    bodyVelocity:Destroy()
+                end
+            end
+            
+            print("🌟 Flutuação desativada automaticamente")
+        end
     end
 end)
 
@@ -783,7 +885,7 @@ mobBtn.MouseButton1Click:Connect(function()
 end)
 
 print("=== DUNGEON HEROES AUTO KILL SCRIPT CARREGADO ===")
-print("Versão 3.1 com debugging avançado - DETECÇÃO APRIMORADA")
+print("Versão 3.2 - OTIMIZADO BASEADO EM ANÁLISE DE CONSOLE")
 print("\nBotões disponíveis:")
 print("- Auto Hit: Ativa/Desativa ataque automático")
 print("- Flutuar: Ativa/Desativa modo de voo")
@@ -793,26 +895,35 @@ print("\nO script irá mostrar informações detalhadas no console F9!")
 print("✅ Todas as verificações de segurança foram adicionadas")
 print("✅ Erros de table.concat foram corrigidos")
 print("✅ Proteções pcall adicionadas em todas as funções críticas")
-print("✅ Script carregado com sucesso! Versão 3.1 - Sistema AUTO HIT implementado")
+print("✅ Script carregado com sucesso! Versão 3.2 - Sistema AUTO HIT OTIMIZADO")
 print("📋 Use os botões: Auto Hit, Float, Listar Remotes, Buscar Mobs")
 print("🔍 Verifique o console F9 para logs de debugging e atividade de rede")
-print("🎯 Sistema AUTO HIT: Simula cliques automáticos para 100% de acerto")
-print("⚔️ Múltiplos métodos: Mouse, UserInput, Tool:Activate(), VirtualInput, RemoteEvents")
+print("🎯 Sistema AUTO HIT: Otimizado baseado em análise de console de script funcional")
+print("⚔️ RemoteEvents específicos: DamageNumber, HitEffect, DoEffect, PlaySFX")
 print("🗡️ Equipamento automático de armas incluído")
+print("🌀 Teleporte automático mais agressivo")
 print("")
 print("📖 COMO USAR O AUTO HIT:")
 print("1. Clique em 'Auto Hit' para ativar/desativar")
 print("2. O sistema encontrará APENAS mobs/NPCs automaticamente (alcance: 50 studs)")
 print("3. Equipará armas da mochila automaticamente")
-print("4. Simulará cliques do mouse para atacar")
-print("5. Testará múltiplos métodos de ataque simultaneamente")
-print("6. Delay configurável entre hits (atual: 0.1s)")
+print("4. Teleportará automaticamente para mobs (distância: 5 studs)")
+print("5. Usará RemoteEvents específicos observados em console funcional")
+print("6. Delay otimizado entre hits (atual: 0.05s - mais agressivo)")
 print("")
 print("🛡️ FILTROS DE DETECÇÃO DE MOBS:")
 print("• Exclui todos os players automaticamente")
 print("• Detecta NPCs por DisplayName diferente")
 print("• Verifica pastas típicas de mobs (npc, mob, enemy, monster)")
 print("• Identifica scripts de NPCs")
+print("")
+print("🔥 MELHORIAS VERSÃO 3.2:")
+print("• RemoteEvents baseados em console de script funcional")
+print("• Parâmetros específicos: DamageNumber(mob, 773, vector, boolean)")
+print("• HitEffect(mob, vector, 773) e DoEffect(mob, 'MagicBoltProjectile')")
+print("• Teleporte via RemoteEvent TeleportPlayer testado")
+print("• Delay reduzido para 0.05s (20 hits/segundo)")
+print("• Distância de ataque reduzida para 5 studs (mais agressivo)")
 print("• Reconhece nomes de monstros comuns")
 print("• Verifica ausência de Player como owner")
 print("================================================")
